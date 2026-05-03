@@ -1,0 +1,252 @@
+「これ俺の！」(Origin Protocol) プロジェクト概要・詳細設計書
+
+1. プロジェクト概要 (Project Overview)
+
+「これ俺の！」は、新しい言葉、アイデア、作品などの「起源」が自分であることを世界に向けてカジュアルに宣言（Mint）し、証拠とともに共有できるWebアプリケーションです。
+
+1.1. コアコンセプト
+
+Origin Claim (起源の主張): X(Twitter)やNoteなどのURLを証跡として、自分が最初の発案者であることを宣言する。
+
+Web3テイストのUI: NFTのMint（発行）を模したUIやToken IDの付与により、カジュアルながらも「デジタル証明書」のような体験を提供する。
+
+グローバル展開: 多言語（8言語）に対応し、世界中のユーザーが利用可能。
+
+2. システムアーキテクチャ (System Architecture)
+
+本プロジェクトは、サーバーレスアーキテクチャを採用し、フロントエンドとFirebaseを直接連携させるSPA（Single Page Application）として構築します。
+
+フロントエンド: React (Vite推奨)
+
+スタイリング: Tailwind CSS
+
+アイコン: Lucide React
+
+バックエンド / データベース: Firebase (Authentication, Firestore)
+
+ホスティング (デプロイ先候補): Firebase Hosting, Vercel, または Netlify
+
+3. 機能要件 (Functional Requirements)
+
+3.1. 認証機能 (Firebase Authentication)
+
+匿名認証 (Anonymous Login): ユーザーにログインの手間をかけさせず、サイト訪問時に自動で匿名アカウントを発行しUIDを割り当てる。
+
+将来的にはGoogleログイン等へのアップグレードパスを考慮するが、MVP（初期公開版）では匿名認証をメインとする。
+
+3.2. 起源の宣言 (Mint) 機能
+
+以下の項目を入力し、Firestoreの claims コレクションに保存する。
+
+案件名 (必須)
+
+カテゴリ (選択式)
+
+起源日 (任意、デフォルトは当日)
+
+作者名 (必須、Local Storageに保存し次回以降自動入力)
+
+証跡URL (必須)
+
+一言コメント (任意)
+
+保存時に、ランダムな16進数文字列（Token ID）を自動生成し付与する。
+
+3.3. タイムライン・表示機能
+
+Firestoreからデータをリアルタイム取得（onSnapshot）し、最新順に表示する。
+
+カテゴリフィルター機能（「すべて」「言葉・スラング」など）を実装。
+
+自分の投稿（ログイン中のUIDと一致）には「あなたの宣言」バッジを表示。
+
+3.4. ユーザーインタラクション機能
+
+賛同（いいね）: 他人の宣言に対して「賛同」ボタンを押下で、Firestoreの likes カウントをインクリメント。
+
+X (Twitter) シェア: 宣言内容と証跡URL、指定のハッシュタグを含んだXの投稿画面 (twitter.com/intent/tweet) を開く。
+
+編集・削除: 自分の投稿に限り、内容の編集および削除（物理削除または論理削除）を許可する。
+
+異議申し立て: 他人の投稿に対して「異議あり」ボタンからメッセージを送信。内容は objections コレクションに保存される（運営確認用）。
+
+3.5. 多言語対応 (i18n)
+
+日本語、英語、中国語、韓国語、ポルトガル語、フランス語、ドイツ語、ヒンディー語の8言語に対応。
+
+ヘッダーのセレクトボックスで切り替え、UIのテキストや通知メッセージ、Twitterシェア時の文言を動的に変更する。
+
+4. データベース設計 (Firestore Schema)
+
+4.1. コレクション: claims (起源の宣言データ)
+
+公開される宣言データのメインコレクション。
+
+フィールド名
+
+型
+
+説明
+
+title
+
+string
+
+案件名・タイトル
+
+category
+
+string
+
+カテゴリ名
+
+author
+
+string
+
+作者名
+
+proofUrl
+
+string
+
+証跡となるURL (X, Noteなど)
+
+originDate
+
+string
+
+起源日 (YYYY-MM-DD形式)
+
+comment
+
+string
+
+一言コメント
+
+timestamp
+
+number
+
+登録時のUnixタイムスタンプ
+
+likes
+
+number
+
+賛同（いいね）の数
+
+tokenId
+
+string
+
+自動生成される16進数のID (例: 0x1a2b...)
+
+userId
+
+string
+
+登録したユーザーのFirebase UID
+
+status
+
+string
+
+ステータス ('active', 'deleted' 等)
+
+4.2. コレクション: objections (異議申し立てデータ)
+
+他ユーザーからの通報・異議をストックするコレクション（一般公開はしない）。
+
+フィールド名
+
+型
+
+説明
+
+claimId
+
+string
+
+対象となる claims ドキュメントのID
+
+fromUserId
+
+string
+
+異議を送信したユーザーのUID
+
+message
+
+string
+
+異議の内容・理由
+
+timestamp
+
+number
+
+送信時のUnixタイムスタンプ
+
+status
+
+string
+
+ステータス ('pending', 'resolved' 等)
+
+5. セキュリティ要件 (Firestore Security Rules Draft)
+
+AIエージェントに実装させる、またはデプロイ時に設定すべきFirebaseセキュリティルールの要件です。
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // claims コレクションのルール
+    match /claims/{claimId} {
+      // 誰でも読み取り可能
+      allow read: if true;
+      // ログインしていれば作成可能
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // 自分の投稿のみ更新・削除可能 (いいねの更新は一部許容するロジックが必要)
+      allow update: if request.auth != null && 
+                    (resource.data.userId == request.auth.uid || 
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // objections コレクションのルール
+    match /objections/{objectionId} {
+      // 一般ユーザーは読み取り不可（運営のみ）
+      allow read: if false;
+      // ログインしていれば作成のみ可能
+      allow create: if request.auth != null && request.resource.data.fromUserId == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}
+
+
+6. AIエージェントへの実装・デプロイ指示
+
+環境構築:
+
+Vite を用いて React プロジェクトを初期化してください (npm create vite@latest koreoreno -- --template react)。
+
+tailwindcss, lucide-react, firebase をインストールし、Tailwindの設定を完了させてください。
+
+ソースコードの移行:
+
+提供されている App.jsx の内容を src/App.jsx に配置してください。
+
+必要に応じてコンポーネントの分割（例: Header.jsx, ClaimForm.jsx, ClaimList.jsx, i18n.js など）を行ってリファクタリングすることを推奨します。
+
+Firebaseのセットアップ:
+
+環境変数 (.env) を使用してFirebaseの設定値 (apiKey, projectId 等) を読み込むようにコードを修正してください。
+
+Firebase ConsoleでAuthentication（匿名認証）とFirestore Databaseを有効化し、上記「5. セキュリティ要件」のルールを適用してください。
+
+ビルドとデプロイ:
+
+npm run build でエラーが出ないことを確認し、指定されたホスティング環境へデプロイするスクリプトまたは設定ファイル（firebase.json など）を生成してください。
