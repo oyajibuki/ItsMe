@@ -310,12 +310,15 @@ export default function App() {
         if (user && !user.isAnonymous) {
           try {
             await setDoc(doc(db, profilesCollectionPath, user.uid), { icon: base64 });
+            showNotification("プロフィールを更新しました");
           } catch (e) {
             console.error("Profile Update Error:", e);
+            showNotification("更新に失敗しました");
           }
-        } else {
-          // ゲスト等の場合は一時的にStateで保持（実際には保存されないがUIプレビュー用）
-          setProfiles(prev => ({ ...prev, guest: base64 }));
+        } else if (user) {
+          // ゲスト等の場合もStateを更新して即時反映させる
+          setProfiles(prev => ({ ...prev, [user.uid]: base64 }));
+          showNotification("プレビューを更新しました（ログインで保存されます）");
         }
         setIconFile(null);
       }
@@ -495,8 +498,8 @@ export default function App() {
                   <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-3">Your Profile</label>
                   <div className="flex items-center gap-4">
                     <div className="relative group">
-                      {profiles[user.uid] || profiles['guest'] ? (
-                        <img src={profiles[user.uid] || profiles['guest']} alt="Profile" className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md" />
+                      {profiles[user.uid] ? (
+                        <img src={profiles[user.uid]} alt="Profile" className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md" />
                       ) : (
                         <div className="w-16 h-16 rounded-full bg-indigo-100 border-2 border-white shadow-md flex items-center justify-center text-indigo-400 text-2xl">👤</div>
                       )}
@@ -590,7 +593,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             {filteredAndSortedClaims.map((claim) => {
               const isMine = user && claim.userId === user.uid;
               const tweetText = encodeURIComponent(`${t.tweetPrefix}${claim.title}${t.tweetSuffix}${isMine ? t.tweetIsMe : claim.author}${t.tweetEnd}${t.tweetHashtags}\nhttps://its-me-indol.vercel.app/`);
@@ -598,87 +601,66 @@ export default function App() {
               const userIcon = profiles[claim.userId] || null;
 
               return (
-                <div key={claim.id} className={`group relative bg-white rounded-xl shadow-sm border ${isMine ? 'border-indigo-200' : 'border-slate-200'} hover:shadow-md transition-all duration-200 overflow-hidden`}>
-                  <div className="flex items-stretch">
-                    {/* Compact Sidebar Decoration */}
-                    <div className={`w-1.5 ${isMine ? 'bg-indigo-500' : 'bg-slate-200'}`}></div>
-                    
-                    <div className="flex-1 p-3 sm:p-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          {userIcon ? (
-                            <img src={userIcon} alt={claim.author} className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0 shadow-sm" />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-black shrink-0 border border-slate-200">
-                              {claim.author ? claim.author.charAt(0) : '?'}
-                            </div>
-                          )}
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-xs font-black text-slate-400 uppercase tracking-tighter leading-none mb-0.5">Creator</span>
-                            <span className="font-bold text-slate-800 text-sm truncate leading-none">{claim.author}</span>
-                          </div>
+                <div key={claim.id} className={`group relative bg-white rounded-lg shadow-sm border ${isMine ? 'border-indigo-100 bg-indigo-50/10' : 'border-slate-100'} hover:border-indigo-300 transition-all duration-200`}>
+                  <div className="flex items-center p-2 sm:p-3 gap-3">
+                    {/* Icon Column */}
+                    <div className="shrink-0">
+                      {userIcon ? (
+                        <img src={userIcon} alt={claim.author} className="w-9 h-9 rounded-full object-cover border border-slate-200 shadow-sm" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 text-xs font-black border border-slate-100">
+                          {claim.author ? claim.author.charAt(0) : '?'}
                         </div>
-                        
-                        <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
-                          <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md border border-indigo-100">
-                            {t[catI18nMap[claim.category]] || claim.category}
-                          </span>
-                          {isMine && <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-md shadow-sm">{t.yourClaim}</span>}
-                        </div>
-                      </div>
+                      )}
+                    </div>
 
-                      <h3 className="text-lg font-black text-slate-900 leading-tight mb-2 break-all group-hover:text-indigo-600 transition-colors">
+                    {/* Content Column */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[10px] font-black text-indigo-500 uppercase tracking-tight">{t[catI18nMap[claim.category]] || claim.category}</span>
+                        <span className="text-slate-300">|</span>
+                        <span className="text-[10px] font-bold text-slate-400 truncate">{claim.author}</span>
+                        {isMine && <span className="text-[9px] font-bold bg-indigo-600 text-white px-1.5 py-0.5 rounded uppercase tracking-tighter">My Origin</span>}
+                      </div>
+                      
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 leading-tight truncate group-hover:text-indigo-600 transition-colors">
                         {claim.title}
                       </h3>
                       
-                      {claim.comment && (
-                        <p className="text-xs text-slate-500 mb-3 line-clamp-2 italic">"{claim.comment}"</p>
-                      )}
-
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2 border-t border-slate-50">
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
-                          <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                      <div className="flex items-center gap-3 mt-1 overflow-hidden">
+                        <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 whitespace-nowrap">
+                          <Calendar className="w-3 h-3 text-indigo-300" />
                           {claim.originDate}
                         </div>
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
-                          <Clock className="w-3.5 h-3.5 text-slate-300" />
-                          {new Date(claim.timestamp).toLocaleDateString()}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-300 ml-auto" title={claim.tokenId}>
-                          <Hash className="w-3 h-3" />
-                          {claim.tokenId ? `${claim.tokenId.substring(0, 10)}...` : 'N/A'}
-                          <button onClick={() => { navigator.clipboard.writeText(claim.tokenId); showNotification("Hash copied!"); }} className="p-1 hover:text-indigo-500 transition-colors"><Copy className="w-3 h-3" /></button>
+                        <div className="flex items-center gap-1 text-[9px] font-mono text-slate-300 truncate" title={claim.tokenId}>
+                          <Hash className="w-2.5 h-2.5" />
+                          {claim.tokenId ? claim.tokenId.substring(0, 8) : 'N/A'}
                         </div>
                       </div>
+                    </div>
 
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100/50">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => handleLike(claim.id, claim.likes || 0)} className="flex items-center gap-1.5 bg-slate-50 hover:bg-pink-50 px-2.5 py-1 rounded-lg transition-all border border-slate-100 group/like">
-                            <ThumbsUp className="w-3.5 h-3.5 text-slate-400 group-hover/like:text-pink-500" />
-                            <span className="text-[10px] font-bold text-slate-600 group-hover/like:text-pink-600">
-                              {t.agree} {(claim.likes || 0) > 0 && <span className="ml-1 text-pink-600">{claim.likes}</span>}
-                            </span>
+                    {/* Action Column */}
+                    <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
+                      <button onClick={() => handleLike(claim.id, claim.likes || 0)} className="flex items-center gap-1 bg-white hover:bg-pink-50 px-2 py-1 rounded-md transition-all border border-slate-100 group/like">
+                        <ThumbsUp className="w-3 h-3 text-slate-300 group-hover/like:text-pink-500" />
+                        <span className="text-[10px] font-black text-slate-500 group-hover/like:text-pink-600">{claim.likes || 0}</span>
+                      </button>
+                      
+                      <div className="flex items-center gap-1">
+                        <a href={claim.proofUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 text-indigo-400 hover:bg-indigo-50 rounded-md transition-all border border-transparent hover:border-indigo-100" title={t.viewProof}>
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                        
+                        {isMine ? (
+                          <>
+                            <button onClick={() => setEditingClaim(claim)} className="p-1.5 text-slate-300 hover:text-indigo-600 rounded-md transition-colors"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => setDeleteConfirm(claim.id)} className="p-1.5 text-slate-300 hover:text-red-500 rounded-md transition-colors"><Trash2 className="w-4 h-4" /></button>
+                          </>
+                        ) : (
+                          <button onClick={() => handleObjection(claim)} className="p-1.5 text-slate-200 hover:text-orange-400 transition-colors" title={t.objection}>
+                            <AlertTriangle className="w-4 h-4" />
                           </button>
-                          <a href={claim.proofUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:bg-indigo-50 px-2.5 py-1 rounded-lg transition-all border border-indigo-50">
-                            {t.viewProof} <ExternalLink className="w-3 h-3" />
-                          </a>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          {isMine ? (
-                            <>
-                              <a href={tweetUrl} target="_blank" rel="noopener noreferrer" className="bg-black text-white p-1.5 rounded-lg hover:opacity-80 transition-opacity" title={t.shareX}>
-                                <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                              </a>
-                              <button onClick={() => setEditingClaim(claim)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => setDeleteConfirm(claim.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                            </>
-                          ) : (
-                            <button onClick={() => handleObjection(claim)} className="text-[10px] font-bold text-slate-300 hover:text-orange-500 transition-colors flex items-center gap-1 px-2 py-1">
-                              <AlertTriangle className="w-3 h-3" /> {t.objection}
-                            </button>
-                          )}
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>
