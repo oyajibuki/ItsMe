@@ -60,7 +60,8 @@ const i18n = {
     editTitle: "宣言を編集する", editBtn: "更新する",
     notifAdd: "「これ俺の！」を世界に宣言しました！", notifDel: "宣言を取り下げました。", notifEdit: "宣言内容を更新しました。", notifObj: "異議申し立てを送信しました。運営にて確認します。",
     tweetPrefix: "「", tweetSuffix: "」の起源は", tweetIsMe: "私", tweetEnd: "です！証拠はこちら👇", tweetHashtags: "\n#これ俺の #OriginProtocol\n",
-    loginGoogle: "Googleでログイン", loginRequired: "宣言を行うにはログインが必要です", logout: "ログアウト"
+    loginGoogle: "Googleでログイン", loginRequired: "宣言を行うにはログインが必要です", logout: "ログアウト",
+    guestUser: "ゲスト（閲覧のみ）", googleUser: "Googleログイン済み"
   },
   en: {
     title: "This is MINE!", subtitle: "~ Protect your ideas and works ~",
@@ -76,7 +77,8 @@ const i18n = {
     editTitle: "Edit Claim", editBtn: "Update",
     notifAdd: "Declared to the world!", notifDel: "Claim deleted.", notifEdit: "Claim updated.", notifObj: "Objection sent for review.",
     tweetPrefix: "The origin of '", tweetSuffix: "' is ", tweetIsMe: "ME", tweetEnd: "! Proof here👇", tweetHashtags: "\n#ThisIsMine #OriginProtocol\n",
-    loginGoogle: "Sign in with Google", loginRequired: "Login required to mint", logout: "Logout"
+    loginGoogle: "Sign in with Google", loginRequired: "Login required to mint", logout: "Logout",
+    guestUser: "Guest (View Only)", googleUser: "Logged in via Google"
   },
   zh: {
     title: "这是我的！", subtitle: "~ 保护你的创意和作品 ~",
@@ -92,7 +94,8 @@ const i18n = {
     editTitle: "编辑声明", editBtn: "更新",
     notifAdd: "已向世界宣布！", notifDel: "声明已删除。", notifEdit: "声明已更新。", notifObj: "异议已提交审核。",
     tweetPrefix: "“", tweetSuffix: "”的起源是", tweetIsMe: "我", tweetEnd: "！证据在此👇", tweetHashtags: "\n#这是我的 #OriginProtocol\n",
-    loginGoogle: "使用Google登录", loginRequired: "铸造需要登录", logout: "登出"
+    loginGoogle: "使用Google登录", loginRequired: "铸造需要登录", logout: "登出",
+    guestUser: "访客 (仅限浏览)", googleUser: "已登录Google"
   },
   ko: {
     title: "이거 내거야!", subtitle: "~ 당신의 아이디어와 작품을 지키세요 ~",
@@ -108,7 +111,8 @@ const i18n = {
     editTitle: "선언 수정하기", editBtn: "업데이트",
     notifAdd: "세계에 선언했습니다!", notifDel: "선언을 삭제했습니다.", notifEdit: "선언 내용을 업데이트했습니다.", notifObj: "이의 제기를 보냈습니다.",
     tweetPrefix: "'", tweetSuffix: "'의 기원은 ", tweetIsMe: "저", tweetEnd: "입니다! 증거는 여기👇", tweetHashtags: "\n#이거내거야 #OriginProtocol\n",
-    loginGoogle: "Google로 로그인", loginRequired: "등록하려면 로그인이 필요합니다", logout: "로그아웃"
+    loginGoogle: "Google로 로그인", loginRequired: "등록하려면 로그인이 필요합니다", logout: "로그아웃",
+    guestUser: "게스트 (읽기 전용)", googleUser: "Google 로그인됨"
   },
   pt: {
     title: "Isso é MEU!", subtitle: "~ Proteja suas ideias e criações ~",
@@ -124,7 +128,8 @@ const i18n = {
     editTitle: "Editar", editBtn: "Atualizar",
     notifAdd: "Declarado ao mundo!", notifDel: "Deletado.", notifEdit: "Atualizado.", notifObj: "Objeção enviada.",
     tweetPrefix: "A origem de '", tweetSuffix: "' é ", tweetIsMe: "MIM", tweetEnd: "! Prova aqui👇", tweetHashtags: "\n#IssoEMeu #OriginProtocol\n",
-    loginGoogle: "Entrar com Google", loginRequired: "Login necessário para mintar", logout: "Sair"
+    loginGoogle: "Entrar com Google", loginRequired: "Login necessário para mintar", logout: "Sair",
+    guestUser: "Visitante", googleUser: "Logado (Google)"
   },
   fr: {
     title: "C'est à MOI !", subtitle: "~ Protégez vos idées et créations ~",
@@ -140,7 +145,8 @@ const i18n = {
     editTitle: "Éditer", editBtn: "Mettre à jour",
     notifAdd: "Déclaré au monde !", notifDel: "Supprimé.", notifEdit: "Mis à jour.", notifObj: "Objection envoyée.",
     tweetPrefix: "L'origine de '", tweetSuffix: "' est ", tweetIsMe: "MOI", tweetEnd: " ! Preuve ici👇", tweetHashtags: "\n#CestAmoi #OriginProtocol\n",
-    loginGoogle: "Se connecter avec Google", loginRequired: "Connexion requise pour créer", logout: "Déconnexion"
+    loginGoogle: "Se connecter avec Google", loginRequired: "Connexion requise pour créer", logout: "Déconnexion",
+    guestUser: "Invité (Lecture seule)", googleUser: "Connecté via Google"
   },
   de: {
     title: "Das ist MEINS!", subtitle: "~ Schütze deine Ideen und Werke ~",
@@ -156,7 +162,8 @@ const i18n = {
     editTitle: "Bearbeiten", editBtn: "Aktualisieren",
     notifAdd: "Der Welt erklärt!", notifDel: "Gelöscht.", notifEdit: "Aktualisiert.", notifObj: "Einspruch gesendet.",
     tweetPrefix: "Der Ursprung von '", tweetSuffix: "' ist ", tweetIsMe: "MICH", tweetEnd: "! Beweis hier👇", tweetHashtags: "\n#DasIstMeins #OriginProtocol\n",
-    loginGoogle: "Mit Google anmelden", loginRequired: "Anmeldung erforderlich", logout: "Abmelden"
+    loginGoogle: "Mit Google anmelden", loginRequired: "Anmeldung erforderlich", logout: "Abmelden",
+    guestUser: "Gast (Nur ansehen)", googleUser: "Über Google angemeldet"
   },
   hi: {
     title: "यह मेरा है!", subtitle: "~ अपने विचारों और रचनाओं की रक्षा करें ~",
@@ -172,7 +179,8 @@ const i18n = {
     editTitle: "संपादित करें", editBtn: "अद्यतन",
     notifAdd: "दुनिया को घोषित किया!", notifDel: "हटा दिया गया।", notifEdit: "अद्यतन किया गया।", notifObj: "आपत्ति भेजी गई।",
     tweetPrefix: "'", tweetSuffix: "' का मूल ", tweetIsMe: "मैं", tweetEnd: " हूँ! प्रमाण यहाँ👇", tweetHashtags: "\n#ThisIsMine #OriginProtocol\n",
-    loginGoogle: "Google से साइन इन करें", loginRequired: "मिंट करने के लिए लॉगिन आवश्यक है", logout: "लॉग आउट"
+    loginGoogle: "Google से साइन इन करें", loginRequired: "मिंट करने के लिए लॉगिन आवश्यक है", logout: "लॉग आउट",
+    guestUser: "अतिथि (केवल देखें)", googleUser: "Google से लॉग इन"
   }
 };
 
@@ -319,10 +327,10 @@ export default function App() {
   };
 
   const handleObjection = (claim) => {
-    const adminEmail = "support@example.com";
-    const subject = encodeURIComponent(`【異議申し立て】「${claim.title}」について`);
-    const body = encodeURIComponent(`以下の宣言について、異議を申し立てます。\n\n・対象の宣言ID: ${claim.tokenId}\n・対象の証跡URL: ${claim.proofUrl}\n\n■ なぜ異議を申し立てるのか？\n[ 自分のほうが早い / 他の人のほうが早い / その他 ]\n\n■ 自分が公開している日程\n[ 年 月 日 ]\n\n■ 証跡URL\n[ URLを記載 ]`);
-    window.location.href = `mailto:${adminEmail}?subject=${subject}&body=${body}`;
+    const baseUrl = "https://oyajibuki.github.io/form/";
+    const subject = encodeURIComponent(`【これ俺の！】異議あり　${claim.title}について`);
+    const body = encodeURIComponent(`なぜ異議を申したてるのか？（自分のほうが早い、他の人のほうが早い、その他）\n[ ]\n\n自分が公開している日程\n[ 年 月 日 ]\n\n証跡URL\n[ URLを記載 ]\n\n-----\n※対象の宣言ID: ${claim.tokenId}\n※対象の証跡URL: ${claim.proofUrl}`);
+    window.open(`${baseUrl}?subject=${subject}&message=${body}`, '_blank');
   };
 
   const filteredAndSortedClaims = useMemo(() => {
@@ -379,7 +387,7 @@ export default function App() {
             {user ? (
               <div className="hidden sm:flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
                 <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0"></div>
-                <span className="text-xs font-mono text-slate-300">{t.user} {user.isAnonymous ? "Anon-" + user.uid.slice(0, 4) : user.uid.slice(0, 5)}</span>
+                <span className="text-xs font-bold text-slate-300">{user.isAnonymous ? t.guestUser : t.googleUser}</span>
                 {!user.isAnonymous && (
                   <button onClick={handleLogout} className="ml-1 p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded-full transition-colors" title={t.logout}>
                     <LogOut className="w-3.5 h-3.5" />
@@ -638,9 +646,9 @@ export default function App() {
                   
                   <div className="bg-slate-50 p-6 rounded-xl mt-6 border border-slate-200">
                     <h4 className="font-bold text-slate-800 mb-2">お問い合わせ窓口</h4>
-                    <p className="text-sm text-slate-600 mb-4">運営メールアドレス宛にご連絡をお願いいたします。状況により返信にお時間をいただく場合がございます。</p>
-                    <a href="mailto:support@example.com" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-indigo-700 transition-colors">
-                      <MessageSquare className="w-4 h-4" /> メールを送る
+                    <p className="text-sm text-slate-600 mb-4">下記のお問い合わせフォームよりご連絡をお願いいたします。状況により返信にお時間をいただく場合がございます。</p>
+                    <a href="https://oyajibuki.github.io/form/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-indigo-700 transition-colors">
+                      <MessageSquare className="w-4 h-4" /> お問い合わせフォームへ
                     </a>
                   </div>
                 </>
