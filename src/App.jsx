@@ -4,7 +4,7 @@ import Cropper from "react-cropper";
 import "cropperjs/dist/cropper.css";
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
-import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore";
 
 // --- Firebase Initialization ---
 const providedConfig = {
@@ -24,6 +24,15 @@ const db = getFirestore(app);
 const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'koreoreno-app-default';
 const claimsCollectionPath = `artifacts/${currentAppId}/public/data/claims`;
 const objectionsCollectionPath = `artifacts/${currentAppId}/public/data/objections`;
+const profilesCollectionPath = `artifacts/${currentAppId}/public/data/profiles`;
+
+const generateHash = async (text) => {
+  const msgUint8 = new TextEncoder().encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return '0x' + hashHex;
+};
 
 const generateTokenId = () => {
   return '0x' + Array.from({length: 16}, () => Math.floor(Math.random()*16).toString(16)).join('');
@@ -196,12 +205,12 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const savedAuthor = useMemo(() => localStorage.getItem('koreoreno_author') || '', []);
-  const savedAuthorIcon = useMemo(() => localStorage.getItem('koreoreno_author_icon') || '', []);
 
   const [formData, setFormData] = useState({
-    title: '', category: '言葉・スラング', author: savedAuthor, authorIcon: savedAuthorIcon, proofUrl: '', originDate: '', comment: ''
+    title: '', category: '言葉・スラング', author: savedAuthor, proofUrl: '', originDate: '', comment: ''
   });
 
+  const [profiles, setProfiles] = useState({});
   const [iconFile, setIconFile] = useState(null);
   const [cropper, setCropper] = useState(null);
 
@@ -257,7 +266,20 @@ export default function App() {
         const claimsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setClaims(claimsData);
       }, (error) => console.error("Fetch Error:", error));
-    return () => unsubscribeSnapshot();
+    
+    const profilesRef = collection(db, profilesCollectionPath);
+    const unsubscribeProfiles = onSnapshot(profilesRef, (snapshot) => {
+      const profilesMap = {};
+      snapshot.docs.forEach(doc => {
+        profilesMap[doc.id] = doc.data().icon;
+      });
+      setProfiles(profilesMap);
+    });
+
+    return () => {
+      unsubscribeSnapshot();
+      unsubscribeProfiles();
+    };
   }, [user]);
 
   const showNotification = (msg) => {
@@ -280,11 +302,21 @@ export default function App() {
     if (files && files[0]) reader.readAsDataURL(files[0]);
   };
 
-  const getCropData = () => {
+  const getCropData = async () => {
     if (typeof cropper !== "undefined" && cropper !== null) {
       const canvas = cropper.getCroppedCanvas({ width: 200, height: 200 });
       if (canvas) {
-        setFormData(prev => ({ ...prev, authorIcon: canvas.toDataURL("image/jpeg", 0.8) }));
+        const base64 = canvas.toDataURL("image/jpeg", 0.8);
+        if (user && !user.isAnonymous) {
+          try {
+            await setDoc(doc(db, profilesCollectionPath, user.uid), { icon: base64 });
+          } catch (e) {
+            console.error("Profile Update Error:", e);
+          }
+        } else {
+          // ゲスト等の場合は一時的にStateで保持（実際には保存されないがUIプレビュー用）
+          setProfiles(prev => ({ ...prev, guest: base64 }));
+        }
         setIconFile(null);
       }
     }
@@ -296,21 +328,19 @@ export default function App() {
     setIsSubmitting(true);
     try {
       localStorage.setItem('koreoreno_author', formData.author);
-      if (formData.authorIcon) {
-        localStorage.setItem('koreoreno_author_icon', formData.authorIcon);
-      } else {
-        localStorage.removeItem('koreoreno_author_icon');
-      }
       const todayStr = new Date().toISOString().split('T')[0];
+      const timestamp = Date.now();
+      const tokenId = await generateHash(`${formData.title}-${formData.author}-${timestamp}-${user.uid}`);
+      
       const newClaim = {
-        title: formData.title, category: formData.category, author: formData.author, authorIcon: formData.authorIcon || null,
+        title: formData.title, category: formData.category, author: formData.author,
         proofUrl: formData.proofUrl, originDate: formData.originDate || todayStr, 
-        comment: formData.comment, timestamp: Date.now(), likes: 0, tokenId: generateTokenId(),
+        comment: formData.comment, timestamp: timestamp, likes: 0, tokenId: tokenId,
         userId: user.uid, status: 'active'
       };
       await addDoc(collection(db, claimsCollectionPath), newClaim);
       setFormData({
-        title: '', category: '言葉・スラング', author: formData.author, authorIcon: formData.authorIcon, proofUrl: '', originDate: '', comment: ''
+        title: '', category: '言葉・スラング', author: formData.author, proofUrl: '', originDate: '', comment: ''
       });
       showNotification(t.notifAdd);
     } catch (error) {
@@ -460,63 +490,38 @@ export default function App() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">{t.itemLabel} <span className="text-red-500">*</span></label>
-                  <input type="text" name="title" value={formData.title} onChange={handleInputChange} placeholder={t.itemPlaceholder} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm" required />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">{t.catLabel}</label>
-                    <select name="category" value={formData.category} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm">
-                      {CATEGORY_INTERNAL.filter(c => c !== "すべて").map(cat => <option key={cat} value={cat}>{t[catI18nMap[cat]]}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">{t.dateLabel} <span className="text-slate-400 font-normal text-xs">{t.optional}</span></label>
-                    <input type="date" name="originDate" value={formData.originDate} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">{t.authorLabel} <span className="text-red-500">*</span></label>
-                  <input type="text" name="author" value={formData.author} onChange={handleInputChange} placeholder={t.authorPlaceholder} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm" required />
-                  <p className="text-[10px] text-slate-400 mt-1">{t.authorNote}</p>
-                </div>
-
-                <div className="pt-2 border-t border-slate-100">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">プロフィールアイコン (任意)</label>
-                  {!formData.authorIcon && !iconFile && (
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xl">👤</div>
-                      <label className="cursor-pointer bg-white border border-slate-300 px-3 py-1.5 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
-                        画像を選択
-                        <input type="file" className="hidden" accept="image/png, image/jpeg, image/jpg" onChange={onIconFileChange} />
+                {/* プロフィール設定セクション (最上部) */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-3">Your Profile</label>
+                  <div className="flex items-center gap-4">
+                    <div className="relative group">
+                      {profiles[user.uid] || profiles['guest'] ? (
+                        <img src={profiles[user.uid] || profiles['guest']} alt="Profile" className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-indigo-100 border-2 border-white shadow-md flex items-center justify-center text-indigo-400 text-2xl">👤</div>
+                      )}
+                      <label className="absolute bottom-0 right-0 bg-slate-900 text-white p-1.5 rounded-full cursor-pointer shadow-lg hover:bg-indigo-600 transition-colors">
+                        <Plus className="w-3.5 h-3.5" />
+                        <input type="file" className="hidden" accept="image/*" onChange={onIconFileChange} />
                       </label>
                     </div>
-                  )}
-                  {formData.authorIcon && !iconFile && (
-                    <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                      <img src={formData.authorIcon} alt="Author Icon" className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm" />
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs font-bold text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />設定済み</span>
-                        <button type="button" onClick={() => setFormData(prev => ({...prev, authorIcon: ""}))} className="text-xs font-bold text-red-500 hover:text-red-700 bg-white border border-red-200 px-2 py-1 rounded shadow-sm transition-colors w-fit">削除する</button>
-                      </div>
+                    <div className="flex-1">
+                      <label className="block text-sm font-bold text-slate-700 mb-1">{t.authorLabel}</label>
+                      <input type="text" name="author" value={formData.author} onChange={handleInputChange} placeholder={t.authorPlaceholder} className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm font-bold shadow-sm" required />
                     </div>
-                  )}
+                  </div>
+                  
                   {iconFile && (
-                    <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 mt-2 shadow-xl">
-                      <div className="text-xs font-bold text-slate-300 mb-3 text-center bg-slate-800 py-1.5 rounded-md">✋ ドラッグ移動 / スクロール拡大縮小 / ボタンで回転</div>
+                    <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 mt-4 shadow-xl">
+                      <div className="text-[10px] font-bold text-slate-300 mb-3 text-center bg-slate-800 py-1 rounded-md">✋ ドラッグ移動 / 回転</div>
                       <div className="rounded-lg overflow-hidden bg-black">
                         <Cropper
-                          style={{ height: 280, width: "100%" }}
+                          style={{ height: 200, width: "100%" }}
                           zoomTo={0}
                           initialAspectRatio={1}
                           aspectRatio={1}
                           src={iconFile}
                           viewMode={1}
-                          minCropBoxHeight={100}
-                          minCropBoxWidth={100}
                           background={false}
                           responsive={true}
                           autoCropArea={0.8}
@@ -528,15 +533,20 @@ export default function App() {
                         />
                       </div>
                       <div className="flex gap-2 mt-3">
-                        <button type="button" onClick={() => cropper.rotate(-90)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-lg text-sm font-bold border border-slate-700 transition-colors">↺ 左回転</button>
-                        <button type="button" onClick={() => cropper.rotate(90)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-lg text-sm font-bold border border-slate-700 transition-colors">↻ 右回転</button>
+                        <button type="button" onClick={() => cropper.rotate(-90)} className="flex-1 bg-slate-800 text-white py-1.5 rounded-lg text-xs font-bold border border-slate-700">↺ 左回転</button>
+                        <button type="button" onClick={() => cropper.rotate(90)} className="flex-1 bg-slate-800 text-white py-1.5 rounded-lg text-xs font-bold border border-slate-700">↻ 右回転</button>
                       </div>
                       <div className="flex gap-2 mt-2 pt-2 border-t border-slate-800">
-                        <button type="button" onClick={() => setIconFile(null)} className="flex-1 bg-transparent border border-slate-600 text-slate-300 hover:bg-slate-800 py-2.5 rounded-lg text-sm font-bold transition-colors">キャンセル</button>
-                        <button type="button" onClick={getCropData} className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-2.5 rounded-lg text-sm font-bold shadow-lg transition-all">✅ 丸く切り抜いて確定</button>
+                        <button type="button" onClick={() => setIconFile(null)} className="flex-1 text-slate-400 py-1.5 rounded-lg text-xs font-bold">キャンセル</button>
+                        <button type="button" onClick={getCropData} className="flex-1 bg-indigo-500 text-white py-1.5 rounded-lg text-xs font-bold shadow-lg">更新する</button>
                       </div>
                     </div>
                   )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">{t.itemLabel} <span className="text-red-500">*</span></label>
+                  <input type="text" name="title" value={formData.title} onChange={handleInputChange} placeholder={t.itemPlaceholder} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm" required />
                 </div>
 
                 <div>
@@ -580,103 +590,95 @@ export default function App() {
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-3">
             {filteredAndSortedClaims.map((claim) => {
               const isMine = user && claim.userId === user.uid;
               const tweetText = encodeURIComponent(`${t.tweetPrefix}${claim.title}${t.tweetSuffix}${isMine ? t.tweetIsMe : claim.author}${t.tweetEnd}${t.tweetHashtags}\nhttps://its-me-indol.vercel.app/`);
               const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent(claim.proofUrl)}`;
+              const userIcon = profiles[claim.userId] || null;
 
               return (
-                <div key={claim.id} className={`group relative bg-white rounded-2xl shadow-sm border ${isMine ? 'border-indigo-300' : 'border-slate-200'} hover:shadow-xl transition-all duration-300 overflow-hidden`}>
-                  {isMine && <div className="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg z-10">{t.yourClaim}</div>}
-                  <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
-                  
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight mb-2 break-all">{claim.title}</h3>
-                        <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-slate-100 text-slate-600 px-3 py-1 rounded-lg">
-                          <Tag className="w-3.5 h-3.5 shrink-0" />{t[catI18nMap[claim.category]] || claim.category}
-                        </span>
-                      </div>
-                    </div>
+                <div key={claim.id} className={`group relative bg-white rounded-xl shadow-sm border ${isMine ? 'border-indigo-200' : 'border-slate-200'} hover:shadow-md transition-all duration-200 overflow-hidden`}>
+                  <div className="flex items-stretch">
+                    {/* Compact Sidebar Decoration */}
+                    <div className={`w-1.5 ${isMine ? 'bg-indigo-500' : 'bg-slate-200'}`}></div>
                     
-                    {claim.comment && (
-                      <div className="mb-4 text-sm text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 flex gap-2 items-start break-words">
-                        <MessageSquare className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                        <p className="leading-relaxed">{claim.comment}</p>
-                      </div>
-                    )}
-                    
-                    <div className="bg-slate-50 rounded-xl p-4 mb-4 border border-slate-100">
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Creator</p>
-                          <div className="flex items-center gap-2">
-                            {claim.authorIcon ? (
-                              <img src={claim.authorIcon} alt={claim.author} className="w-6 h-6 rounded-full object-cover border border-slate-200 shrink-0" />
-                            ) : (
-                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                                {claim.author ? claim.author.charAt(0) : '?'}
-                              </div>
-                            )}
-                            <span className="font-bold text-slate-700 text-sm truncate">{claim.author}</span>
+                    <div className="flex-1 p-3 sm:p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          {userIcon ? (
+                            <img src={userIcon} alt={claim.author} className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0 shadow-sm" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-black shrink-0 border border-slate-200">
+                              {claim.author ? claim.author.charAt(0) : '?'}
+                            </div>
+                          )}
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-xs font-black text-slate-400 uppercase tracking-tighter leading-none mb-0.5">Creator</span>
+                            <span className="font-bold text-slate-800 text-sm truncate leading-none">{claim.author}</span>
                           </div>
                         </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Origin Date</p>
-                          <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700">
-                            <Calendar className="w-4 h-4 text-indigo-400 shrink-0" />
-                            {claim.originDate}
-                          </div>
-                        </div>
-                        <div className="hidden md:block">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Mint Date</p>
-                          <div className="flex items-center gap-1.5 text-sm font-medium text-slate-500">
-                            <Clock className="w-3.5 h-3.5 shrink-0" />
-                            {new Date(claim.timestamp).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-3 pt-3 border-t border-slate-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 text-xs font-mono text-slate-500">
-                          <Hash className="w-3 h-3 shrink-0" />ID: {claim.tokenId}
-                        </div>
-                        <a href={claim.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors bg-indigo-50 px-3 py-1.5 rounded-md self-start sm:self-auto">
-                          {t.viewProof} <ExternalLink className="w-3 h-3 shrink-0" />
-                        </a>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => handleLike(claim.id, claim.likes || 0)} className="group/btn flex items-center gap-2 bg-white border border-slate-200 hover:border-pink-200 hover:bg-pink-50 px-4 py-2 rounded-full transition-all">
-                          <ThumbsUp className="w-4 h-4 text-slate-400 group-hover/btn:text-pink-500 shrink-0" />
-                          <span className="text-sm font-bold text-slate-600 group-hover/btn:text-pink-600">
-                            {t.agree} {(claim.likes || 0) > 0 && <span className="ml-1 bg-pink-100 text-pink-600 px-2 py-0.5 rounded-full text-xs">{claim.likes}</span>}
+                        
+                        <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
+                          <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md border border-indigo-100">
+                            {t[catI18nMap[claim.category]] || claim.category}
                           </span>
-                        </button>
+                          {isMine && <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-md shadow-sm">{t.yourClaim}</span>}
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2 ml-auto">
-                        {isMine ? (
-                          <>
-                            <a href={tweetUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-black text-white px-4 py-1.5 rounded-full text-sm font-bold hover:bg-gray-800 transition-all mr-2">
-                              {t.shareX}
-                            </a>
-                            <button onClick={() => setEditingClaim(claim)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors" title="Edit">
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => setDeleteConfirm(claim.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors" title="Delete">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </>
-                        ) : (
-                          <button onClick={() => handleObjection(claim)} className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-orange-600 hover:bg-orange-50 px-3 py-1.5 rounded-full transition-colors border border-transparent hover:border-orange-200">
-                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {t.objection}
+                      <h3 className="text-lg font-black text-slate-900 leading-tight mb-2 break-all group-hover:text-indigo-600 transition-colors">
+                        {claim.title}
+                      </h3>
+                      
+                      {claim.comment && (
+                        <p className="text-xs text-slate-500 mb-3 line-clamp-2 italic">"{claim.comment}"</p>
+                      )}
+
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2 border-t border-slate-50">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+                          <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                          {claim.originDate}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+                          <Clock className="w-3.5 h-3.5 text-slate-300" />
+                          {new Date(claim.timestamp).toLocaleDateString()}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-300 ml-auto" title={claim.tokenId}>
+                          <Hash className="w-3 h-3" />
+                          {claim.tokenId ? `${claim.tokenId.substring(0, 10)}...` : 'N/A'}
+                          <button onClick={() => { navigator.clipboard.writeText(claim.tokenId); showNotification("Hash copied!"); }} className="p-1 hover:text-indigo-500 transition-colors"><Copy className="w-3 h-3" /></button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100/50">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => handleLike(claim.id, claim.likes || 0)} className="flex items-center gap-1.5 bg-slate-50 hover:bg-pink-50 px-2.5 py-1 rounded-lg transition-all border border-slate-100 group/like">
+                            <ThumbsUp className="w-3.5 h-3.5 text-slate-400 group-hover/like:text-pink-500" />
+                            <span className="text-[10px] font-bold text-slate-600 group-hover/like:text-pink-600">
+                              {t.agree} {(claim.likes || 0) > 0 && <span className="ml-1 text-pink-600">{claim.likes}</span>}
+                            </span>
                           </button>
-                        )}
+                          <a href={claim.proofUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:bg-indigo-50 px-2.5 py-1 rounded-lg transition-all border border-indigo-50">
+                            {t.viewProof} <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          {isMine ? (
+                            <>
+                              <a href={tweetUrl} target="_blank" rel="noopener noreferrer" className="bg-black text-white p-1.5 rounded-lg hover:opacity-80 transition-opacity" title={t.shareX}>
+                                <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                              </a>
+                              <button onClick={() => setEditingClaim(claim)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => setDeleteConfirm(claim.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </>
+                          ) : (
+                            <button onClick={() => handleObjection(claim)} className="text-[10px] font-bold text-slate-300 hover:text-orange-500 transition-colors flex items-center gap-1 px-2 py-1">
+                              <AlertTriangle className="w-3 h-3" /> {t.objection}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
