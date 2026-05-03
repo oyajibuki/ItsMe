@@ -307,16 +307,19 @@ export default function App() {
       const canvas = cropper.getCroppedCanvas({ width: 200, height: 200 });
       if (canvas) {
         const base64 = canvas.toDataURL("image/jpeg", 0.8);
+        console.log("Updating profile at:", `${profilesCollectionPath}/${user.uid}`);
         if (user && !user.isAnonymous) {
           try {
-            await setDoc(doc(db, profilesCollectionPath, user.uid), { icon: base64 });
+            await setDoc(doc(db, profilesCollectionPath, user.uid), { 
+              icon: base64,
+              updatedAt: Date.now()
+            });
             showNotification("プロフィールを更新しました");
           } catch (e) {
-            console.error("Profile Update Error:", e);
-            showNotification("更新に失敗しました");
+            console.error("Profile Update Error Details:", e);
+            showNotification(`更新失敗: ${e.message || '権限エラー'}`);
           }
         } else if (user) {
-          // ゲスト等の場合もStateを更新して即時反映させる
           setProfiles(prev => ({ ...prev, [user.uid]: base64 }));
           showNotification("プレビューを更新しました（ログインで保存されます）");
         }
