@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ExternalLink, User, Tag, Clock, Plus, ShieldCheck, ThumbsUp, Hash, Award, Hexagon, Calendar, MessageSquare, Edit2, Trash2, AlertTriangle, X, Globe, LogIn, LogOut } from 'lucide-react';
+import { CheckCircle2, Copy, ExternalLink, Filter, Search, PlusCircle, Calendar, MessageSquare, Clock, Hash, ThumbsUp, LogOut, Edit2, Trash2, ShieldAlert, User, Tag, Plus, ShieldCheck, Hexagon, AlertTriangle, X, Globe, LogIn } from 'lucide-react';
+import Cropper from "react-cropper";
+import "cropperjs/dist/cropper.css";
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
 import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
@@ -194,10 +196,14 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const savedAuthor = useMemo(() => localStorage.getItem('koreoreno_author') || '', []);
+  const savedAuthorIcon = useMemo(() => localStorage.getItem('koreoreno_author_icon') || '', []);
 
   const [formData, setFormData] = useState({
-    title: '', category: '言葉・スラング', author: savedAuthor, proofUrl: '', originDate: '', comment: ''
+    title: '', category: '言葉・スラング', author: savedAuthor, authorIcon: savedAuthorIcon, proofUrl: '', originDate: '', comment: ''
   });
+
+  const [iconFile, setIconFile] = useState(null);
+  const [cropper, setCropper] = useState(null);
 
   const [editingClaim, setEditingClaim] = useState(null);
   const [infoModal, setInfoModal] = useState({ isOpen: false, type: null });
@@ -264,22 +270,47 @@ export default function App() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const onIconFileChange = (e) => {
+    e.preventDefault();
+    let files;
+    if (e.dataTransfer) files = e.dataTransfer.files;
+    else if (e.target) files = e.target.files;
+    const reader = new FileReader();
+    reader.onload = () => setIconFile(reader.result);
+    if (files && files[0]) reader.readAsDataURL(files[0]);
+  };
+
+  const getCropData = () => {
+    if (typeof cropper !== "undefined" && cropper !== null) {
+      const canvas = cropper.getCroppedCanvas({ width: 200, height: 200 });
+      if (canvas) {
+        setFormData(prev => ({ ...prev, authorIcon: canvas.toDataURL("image/jpeg", 0.8) }));
+        setIconFile(null);
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user || !formData.title || !formData.author || !formData.proofUrl) return;
     setIsSubmitting(true);
     try {
       localStorage.setItem('koreoreno_author', formData.author);
+      if (formData.authorIcon) {
+        localStorage.setItem('koreoreno_author_icon', formData.authorIcon);
+      } else {
+        localStorage.removeItem('koreoreno_author_icon');
+      }
       const todayStr = new Date().toISOString().split('T')[0];
       const newClaim = {
-        title: formData.title, category: formData.category, author: formData.author,
+        title: formData.title, category: formData.category, author: formData.author, authorIcon: formData.authorIcon || null,
         proofUrl: formData.proofUrl, originDate: formData.originDate || todayStr, 
         comment: formData.comment, timestamp: Date.now(), likes: 0, tokenId: generateTokenId(),
         userId: user.uid, status: 'active'
       };
       await addDoc(collection(db, claimsCollectionPath), newClaim);
       setFormData({
-        title: '', category: '言葉・スラング', author: formData.author, proofUrl: '', originDate: '', comment: ''
+        title: '', category: '言葉・スラング', author: formData.author, authorIcon: formData.authorIcon, proofUrl: '', originDate: '', comment: ''
       });
       showNotification(t.notifAdd);
     } catch (error) {
@@ -453,6 +484,61 @@ export default function App() {
                   <p className="text-[10px] text-slate-400 mt-1">{t.authorNote}</p>
                 </div>
 
+                <div className="pt-2 border-t border-slate-100">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">プロフィールアイコン (任意)</label>
+                  {!formData.authorIcon && !iconFile && (
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xl">👤</div>
+                      <label className="cursor-pointer bg-white border border-slate-300 px-3 py-1.5 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+                        画像を選択
+                        <input type="file" className="hidden" accept="image/png, image/jpeg, image/jpg" onChange={onIconFileChange} />
+                      </label>
+                    </div>
+                  )}
+                  {formData.authorIcon && !iconFile && (
+                    <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <img src={formData.authorIcon} alt="Author Icon" className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm" />
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-bold text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />設定済み</span>
+                        <button type="button" onClick={() => setFormData(prev => ({...prev, authorIcon: ""}))} className="text-xs font-bold text-red-500 hover:text-red-700 bg-white border border-red-200 px-2 py-1 rounded shadow-sm transition-colors w-fit">削除する</button>
+                      </div>
+                    </div>
+                  )}
+                  {iconFile && (
+                    <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 mt-2 shadow-xl">
+                      <div className="text-xs font-bold text-slate-300 mb-3 text-center bg-slate-800 py-1.5 rounded-md">✋ ドラッグ移動 / スクロール拡大縮小 / ボタンで回転</div>
+                      <div className="rounded-lg overflow-hidden bg-black">
+                        <Cropper
+                          style={{ height: 280, width: "100%" }}
+                          zoomTo={0}
+                          initialAspectRatio={1}
+                          aspectRatio={1}
+                          src={iconFile}
+                          viewMode={1}
+                          minCropBoxHeight={100}
+                          minCropBoxWidth={100}
+                          background={false}
+                          responsive={true}
+                          autoCropArea={0.8}
+                          cropBoxResizable={false}
+                          cropBoxMovable={false}
+                          dragMode="move"
+                          onInitialized={(instance) => setCropper(instance)}
+                          guides={false}
+                        />
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <button type="button" onClick={() => cropper.rotate(-90)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-lg text-sm font-bold border border-slate-700 transition-colors">↺ 左回転</button>
+                        <button type="button" onClick={() => cropper.rotate(90)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-lg text-sm font-bold border border-slate-700 transition-colors">↻ 右回転</button>
+                      </div>
+                      <div className="flex gap-2 mt-2 pt-2 border-t border-slate-800">
+                        <button type="button" onClick={() => setIconFile(null)} className="flex-1 bg-transparent border border-slate-600 text-slate-300 hover:bg-slate-800 py-2.5 rounded-lg text-sm font-bold transition-colors">キャンセル</button>
+                        <button type="button" onClick={getCropData} className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-2.5 rounded-lg text-sm font-bold shadow-lg transition-all">✅ 丸く切り抜いて確定</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">{t.urlLabel} <span className="text-red-500">*</span></label>
                   <input type="url" name="proofUrl" value={formData.proofUrl} onChange={handleInputChange} placeholder={t.urlPlaceholder} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm" required />
@@ -527,9 +613,13 @@ export default function App() {
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Creator</p>
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                              {claim.author.charAt(0)}
-                            </div>
+                            {claim.authorIcon ? (
+                              <img src={claim.authorIcon} alt={claim.author} className="w-6 h-6 rounded-full object-cover border border-slate-200 shrink-0" />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                {claim.author ? claim.author.charAt(0) : '?'}
+                              </div>
+                            )}
                             <span className="font-bold text-slate-700 text-sm truncate">{claim.author}</span>
                           </div>
                         </div>

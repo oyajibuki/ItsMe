@@ -7,3 +7,8 @@
     @apply bg-slate-50 text-slate-900;
   }
 }
+
+.cropper-view-box,
+.cropper-face {
+  border-radius: 50%;
+}
