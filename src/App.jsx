@@ -39,10 +39,10 @@ const LANGUAGES = [
   { code: 'hi', label: 'हिन्दी' }
 ];
 
-const CATEGORY_INTERNAL = ["すべて", "言葉・スラング", "アプリ・サービス", "アイデア・ハック", "デザイン・アート", "その他"];
+const CATEGORY_INTERNAL = ["すべて", "言葉・スラング", "アプリ・サービス", "アイデア・ハック", "デザイン・アート", "ゲーム", "同人誌", "その他"];
 const catI18nMap = {
   "すべて": "catAll", "言葉・スラング": "catWords", "アプリ・サービス": "catApps", 
-  "アイデア・ハック": "catIdeas", "デザイン・アート": "catDesign", "その他": "catOthers"
+  "アイデア・ハック": "catIdeas", "デザイン・アート": "catDesign", "ゲーム": "catGames", "同人誌": "catDoujin", "その他": "catOthers"
 };
 
 const i18n = {
@@ -53,7 +53,7 @@ const i18n = {
     authorLabel: "作者 (あなた)", authorPlaceholder: "例: 山田たろう", authorNote: "※一度入力すると次回から自動入力されます",
     urlLabel: "証跡 (URL)", urlPlaceholder: "XやNoteのURL", commentLabel: "一言コメント", commentPlaceholder: "生まれた背景やエピソードなど",
     submit: "「これ俺の！」と宣言する", submitting: "登録中...",
-    catAll: "すべて", catWords: "言葉・スラング", catApps: "アプリ・サービス", catIdeas: "アイデア・ハック", catDesign: "デザイン・アート", catOthers: "その他",
+    catAll: "すべて", catWords: "言葉・スラング", catApps: "アプリ・サービス", catIdeas: "アイデア・ハック", catDesign: "デザイン・アート", catGames: "ゲーム", catDoujin: "同人誌", catOthers: "その他",
     noClaims: "このカテゴリにはまだ宣言がありません。", yourClaim: "あなたの宣言", viewProof: "証跡を見る", agree: "賛同", shareX: "𝕏 で宣言する", objection: "異議あり",
     delTitle: "本当に削除しますか？", delDesc: "一度削除した「これ俺の！」宣言は元に戻せません。", cancel: "キャンセル", delBtn: "削除する",
     objTitle: "異議を申し立てる", objDesc: "この宣言に対して「私の方が先だ」「事実と異なる」などのメッセージを送信します。運営が内容を確認し、必要に応じて対応・非表示にします。", objPlaceholder: "異議の理由や、あなたの証拠URLなどを記載してください", objSubmit: "異議を送信する",
@@ -70,7 +70,7 @@ const i18n = {
     authorLabel: "Author (You)", authorPlaceholder: "e.g., John Doe", authorNote: "* Will be auto-filled next time",
     urlLabel: "Proof (URL)", urlPlaceholder: "URL of X, Note, etc.", commentLabel: "Comment", commentPlaceholder: "Background or episode",
     submit: "Declare 'This is MINE!'", submitting: "Minting...",
-    catAll: "All", catWords: "Words/Slang", catApps: "Apps/Services", catIdeas: "Ideas/Hacks", catDesign: "Design/Art", catOthers: "Others",
+    catAll: "All", catWords: "Words/Slang", catApps: "Apps/Services", catIdeas: "Ideas/Hacks", catDesign: "Design/Art", catGames: "Games", catDoujin: "Doujinshi/Zines", catOthers: "Others",
     noClaims: "No claims in this category yet.", yourClaim: "Your Claim", viewProof: "View Proof", agree: "Agree", shareX: "Declare on 𝕏", objection: "Objection",
     delTitle: "Delete claim?", delDesc: "Deleted claims cannot be restored.", cancel: "Cancel", delBtn: "Delete",
     objTitle: "File an Objection", objDesc: "Send a message to admins claiming priority or inaccuracy.", objPlaceholder: "Reason, your proof URL, etc.", objSubmit: "Submit Objection",
@@ -87,7 +87,7 @@ const i18n = {
     authorLabel: "作者 (你)", authorPlaceholder: "例：张三", authorNote: "* 下次将自动填写",
     urlLabel: "证据 (URL)", urlPlaceholder: "X或Note的URL", commentLabel: "评论", commentPlaceholder: "背景或故事",
     submit: "宣布“这是我的！”", submitting: "注册中...",
-    catAll: "全部", catWords: "词语/俚语", catApps: "应用/服务", catIdeas: "创意/技巧", catDesign: "设计/艺术", catOthers: "其他",
+    catAll: "全部", catWords: "词语/俚语", catApps: "应用/服务", catIdeas: "创意/技巧", catDesign: "设计/艺术", catGames: "游戏", catDoujin: "同人志", catOthers: "其他",
     noClaims: "该类别尚无声明。", yourClaim: "你的声明", viewProof: "查看证据", agree: "赞同", shareX: "在𝕏上宣布", objection: "提出异议",
     delTitle: "确认删除？", delDesc: "删除后无法恢复。", cancel: "取消", delBtn: "删除",
     objTitle: "提出异议", objDesc: "发送信息说明“我才是首创”或“与事实不符”。", objPlaceholder: "异议理由及你的证据URL等", objSubmit: "提交异议",
@@ -104,7 +104,7 @@ const i18n = {
     authorLabel: "작성자 (본인)", authorPlaceholder: "예: 홍길동", authorNote: "* 다음부터 자동 입력됩니다",
     urlLabel: "증거 (URL)", urlPlaceholder: "X 또는 Note URL", commentLabel: "코멘트", commentPlaceholder: "배경이나 에피소드 등",
     submit: "'이거 내거야!' 선언하기", submitting: "등록 중...",
-    catAll: "전체", catWords: "단어/슬랭", catApps: "앱/서비스", catIdeas: "아이디어/핵", catDesign: "디자인/아트", catOthers: "기타",
+    catAll: "전체", catWords: "단어/슬랭", catApps: "앱/서비스", catIdeas: "아이디어/핵", catDesign: "디자인/아트", catGames: "게임", catDoujin: "동인지", catOthers: "기타",
     noClaims: "이 카테고리에는 아직 선언이 없습니다.", yourClaim: "당신의 선언", viewProof: "증거 보기", agree: "동의", shareX: "𝕏에 선언하기", objection: "이의 제기",
     delTitle: "정말 삭제하시겠습니까?", delDesc: "삭제된 선언은 복구할 수 없습니다.", cancel: "취소", delBtn: "삭제",
     objTitle: "이의 제기하기", objDesc: "'내가 먼저다' 혹은 '사실과 다르다' 등의 메시지를 보냅니다.", objPlaceholder: "이의 제기 이유 및 증거 URL 등", objSubmit: "이의 제기 보내기",
@@ -121,7 +121,7 @@ const i18n = {
     authorLabel: "Autor (Você)", authorPlaceholder: "ex: João", authorNote: "* Preenchimento automático na próxima vez",
     urlLabel: "Prova (URL)", urlPlaceholder: "URL do X, Note, etc.", commentLabel: "Comentário", commentPlaceholder: "Fundo ou episódio",
     submit: "Declarar 'Isso é MEU!'", submitting: "Mintando...",
-    catAll: "Todos", catWords: "Palavras/Gírias", catApps: "Apps/Serviços", catIdeas: "Ideias/Hacks", catDesign: "Design/Arte", catOthers: "Outros",
+    catAll: "Todos", catWords: "Palavras/Gírias", catApps: "Apps/Serviços", catIdeas: "Ideias/Hacks", catDesign: "Design/Arte", catGames: "Jogos", catDoujin: "Doujinshi/Fanzines", catOthers: "Outros",
     noClaims: "Nenhuma declaração nesta categoria.", yourClaim: "Sua Declaração", viewProof: "Ver Prova", agree: "Concordar", shareX: "Declarar no 𝕏", objection: "Objeção",
     delTitle: "Deletar?", delDesc: "Não pode ser desfeito.", cancel: "Cancelar", delBtn: "Deletar",
     objTitle: "Fazer Objeção", objDesc: "Envie uma mensagem dizendo que você foi o primeiro.", objPlaceholder: "Razão, URL de prova, etc.", objSubmit: "Enviar",
@@ -138,7 +138,7 @@ const i18n = {
     authorLabel: "Auteur (Vous)", authorPlaceholder: "ex: Jean", authorNote: "* Sera rempli automatiquement",
     urlLabel: "Preuve (URL)", urlPlaceholder: "URL de X, Note, etc.", commentLabel: "Commentaire", commentPlaceholder: "Contexte ou épisode",
     submit: "Déclarer 'C'est à MOI !'", submitting: "En cours...",
-    catAll: "Tout", catWords: "Mots/Argot", catApps: "Apps/Services", catIdeas: "Idées/Astuces", catDesign: "Design/Art", catOthers: "Autres",
+    catAll: "Tout", catWords: "Mots/Argot", catApps: "Apps/Services", catIdeas: "Idées/Astuces", catDesign: "Design/Art", catGames: "Jeux", catDoujin: "Doujinshi/Fanzines", catOthers: "Autres",
     noClaims: "Aucune déclaration.", yourClaim: "Votre Déclaration", viewProof: "Voir Preuve", agree: "Approuver", shareX: "Déclarer sur 𝕏", objection: "Objection",
     delTitle: "Supprimer ?", delDesc: "Action irréversible.", cancel: "Annuler", delBtn: "Supprimer",
     objTitle: "Faire une Objection", objDesc: "Envoyez un message aux admins.", objPlaceholder: "Raison, URL de preuve...", objSubmit: "Envoyer",
@@ -155,7 +155,7 @@ const i18n = {
     authorLabel: "Autor (Du)", authorPlaceholder: "z.B. Max Mustermann", authorNote: "* Wird beim nächsten Mal automatisch ausgefüllt",
     urlLabel: "Beweis (URL)", urlPlaceholder: "URL von X, Note, etc.", commentLabel: "Kommentar", commentPlaceholder: "Hintergrund oder Episode",
     submit: "Erkläre 'Das ist MEINS!'", submitting: "Präge...",
-    catAll: "Alle", catWords: "Wörter/Slang", catApps: "Apps/Dienste", catIdeas: "Ideen/Hacks", catDesign: "Design/Kunst", catOthers: "Andere",
+    catAll: "Alle", catWords: "Wörter/Slang", catApps: "Apps/Dienste", catIdeas: "Ideen/Hacks", catDesign: "Design/Kunst", catGames: "Spiele", catDoujin: "Doujinshi/Fanzines", catOthers: "Andere",
     noClaims: "Keine Erklärungen hier.", yourClaim: "Deine Erklärung", viewProof: "Beweis ansehen", agree: "Zustimmen", shareX: "Auf 𝕏 erklären", objection: "Einspruch",
     delTitle: "Löschen?", delDesc: "Kann nicht rückgängig gemacht werden.", cancel: "Abbrechen", delBtn: "Löschen",
     objTitle: "Einspruch erheben", objDesc: "Sende eine Nachricht an die Admins.", objPlaceholder: "Grund, Beweis-URL, etc.", objSubmit: "Senden",
@@ -172,7 +172,7 @@ const i18n = {
     authorLabel: "लेखक (आप)", authorPlaceholder: "उदाहरण: राहुल", authorNote: "* अगली बार अपने आप भर जाएगा",
     urlLabel: "प्रमाण (URL)", urlPlaceholder: "X, Note आदि का URL", commentLabel: "टिप्पणी", commentPlaceholder: "पृष्ठभूमि या प्रसंग",
     submit: "घोषित करें 'यह मेरा है!'", submitting: "पंजीकरण...",
-    catAll: "सभी", catWords: "शब्द/कथा", catApps: "ऐप्स/सेवाएं", catIdeas: "विचार/हैक", catDesign: "डिजाइन/कला", catOthers: "अन्य",
+    catAll: "सभी", catWords: "शब्द/कथा", catApps: "ऐप्स/सेवाएं", catIdeas: "विचार/हैक", catDesign: "डिजाइन/कला", catGames: "गेम्स", catDoujin: "डोजिनशी/फैनजीन", catOthers: "अन्य",
     noClaims: "इस श्रेणी में अभी तक कोई दावा नहीं है।", yourClaim: "आपका दावा", viewProof: "प्रमाण देखें", agree: "सहमत", shareX: "𝕏 पर घोषित करें", objection: "आपत्ति",
     delTitle: "क्या आप वाकई हटाना चाहते हैं?", delDesc: "इसे पूर्ववत नहीं किया जा सकता।", cancel: "रद्द करें", delBtn: "हटाएं",
     objTitle: "आपत्ति दर्ज करें", objDesc: "व्यवस्थापकों को संदेश भेजें।", objPlaceholder: "कारण, आपका प्रमाण URL आदि", objSubmit: "आपत्ति भेजें",
