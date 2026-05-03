@@ -192,8 +192,7 @@ export default function App() {
   });
 
   const [editingClaim, setEditingClaim] = useState(null);
-  const [objectionModal, setObjectionModal] = useState({ isOpen: false, claimId: null });
-  const [objectionMessage, setObjectionMessage] = useState('');
+  const [infoModal, setInfoModal] = useState({ isOpen: false, type: null });
   const [deleteConfirm, setDeleteConfirm] = useState(null); 
   const [notification, setNotification] = useState(''); 
 
@@ -319,19 +318,11 @@ export default function App() {
     }
   };
 
-  const handleObjectionSubmit = async (e) => {
-    e.preventDefault();
-    if (!user || !objectionModal.claimId || !objectionMessage) return;
-    try {
-      await addDoc(collection(db, objectionsCollectionPath), {
-        claimId: objectionModal.claimId, fromUserId: user.uid, message: objectionMessage, timestamp: Date.now(), status: 'pending'
-      });
-      setObjectionModal({ isOpen: false, claimId: null });
-      setObjectionMessage('');
-      showNotification(t.notifObj);
-    } catch (error) {
-      console.error("Objection Error:", error);
-    }
+  const handleObjection = (claim) => {
+    const adminEmail = "support@example.com";
+    const subject = encodeURIComponent(`【異議申し立て】「${claim.title}」について`);
+    const body = encodeURIComponent(`以下の宣言について、異議を申し立てます。\n\n・対象の宣言ID: ${claim.tokenId}\n・対象の証跡URL: ${claim.proofUrl}\n\n■ なぜ異議を申し立てるのか？\n[ 自分のほうが早い / 他の人のほうが早い / その他 ]\n\n■ 自分が公開している日程\n[ 年 月 日 ]\n\n■ 証跡URL\n[ URLを記載 ]`);
+    window.location.href = `mailto:${adminEmail}?subject=${subject}&body=${body}`;
   };
 
   const filteredAndSortedClaims = useMemo(() => {
@@ -498,7 +489,7 @@ export default function App() {
           <div className="space-y-6">
             {filteredAndSortedClaims.map((claim) => {
               const isMine = user && claim.userId === user.uid;
-              const tweetText = encodeURIComponent(`${t.tweetPrefix}${claim.title}${t.tweetSuffix}${isMine ? t.tweetIsMe : claim.author}${t.tweetEnd}${t.tweetHashtags}`);
+              const tweetText = encodeURIComponent(`${t.tweetPrefix}${claim.title}${t.tweetSuffix}${isMine ? t.tweetIsMe : claim.author}${t.tweetEnd}${t.tweetHashtags}\nhttps://its-me-indol.vercel.app/`);
               const tweetUrl = `https://twitter.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent(claim.proofUrl)}`;
 
               return (
@@ -568,15 +559,14 @@ export default function App() {
                             {t.agree} {(claim.likes || 0) > 0 && <span className="ml-1 bg-pink-100 text-pink-600 px-2 py-0.5 rounded-full text-xs">{claim.likes}</span>}
                           </span>
                         </button>
-                        
-                        <a href={tweetUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-black text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-gray-800 transition-all">
-                          {t.shareX}
-                        </a>
                       </div>
 
                       <div className="flex items-center gap-2 ml-auto">
                         {isMine ? (
                           <>
+                            <a href={tweetUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-black text-white px-4 py-1.5 rounded-full text-sm font-bold hover:bg-gray-800 transition-all mr-2">
+                              {t.shareX}
+                            </a>
                             <button onClick={() => setEditingClaim(claim)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors" title="Edit">
                               <Edit2 className="w-4 h-4" />
                             </button>
@@ -585,7 +575,7 @@ export default function App() {
                             </button>
                           </>
                         ) : (
-                          <button onClick={() => setObjectionModal({ isOpen: true, claimId: claim.id })} className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-orange-600 hover:bg-orange-50 px-3 py-1.5 rounded-full transition-colors border border-transparent hover:border-orange-200">
+                          <button onClick={() => handleObjection(claim)} className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-orange-600 hover:bg-orange-50 px-3 py-1.5 rounded-full transition-colors border border-transparent hover:border-orange-200">
                             <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {t.objection}
                           </button>
                         )}
@@ -620,23 +610,48 @@ export default function App() {
         </div>
       )}
 
-      {objectionModal.isOpen && (
+      {infoModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-orange-500" /> {t.objTitle}
+          <div className="bg-white rounded-2xl p-6 md:p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+              <h3 className="text-xl font-black text-slate-900">
+                {infoModal.type === 'privacy' ? 'プライバシーポリシー' : 'サポート・運営について'}
               </h3>
-              <button onClick={() => setObjectionModal({ isOpen: false, claimId: null })} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+              <button onClick={() => setInfoModal({ isOpen: false, type: null })} className="text-slate-400 hover:text-slate-600 p-2"><X className="w-6 h-6" /></button>
             </div>
-            <p className="text-sm text-slate-600 mb-4">{t.objDesc}</p>
-            <form onSubmit={handleObjectionSubmit}>
-              <textarea value={objectionMessage} onChange={(e) => setObjectionMessage(e.target.value)} placeholder={t.objPlaceholder} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all text-sm resize-none mb-4" rows="4" required></textarea>
-              <div className="flex gap-3 justify-end">
-                <button type="button" onClick={() => setObjectionModal({ isOpen: false, claimId: null })} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg">{t.cancel}</button>
-                <button type="submit" className="px-4 py-2 text-sm font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-lg shadow-sm">{t.objSubmit}</button>
-              </div>
-            </form>
+            
+            <div className="prose prose-slate prose-sm sm:prose-base max-w-none text-slate-600">
+              {infoModal.type === 'privacy' ? (
+                <>
+                  <p>本サービス「これ俺の！」（以下、「本サービス」）は、ユーザーのプライバシー情報の取扱いについて、以下のとおりプライバシーポリシーを定めます。</p>
+                  <h4 className="font-bold mt-4 mb-2 text-slate-800">1. 個人情報の収集方法</h4>
+                  <p>本サービスは、Google認証等を利用する際に、必要な最小限の認証情報（ユーザーID等）を取得します。メールアドレスや氏名等の個人を特定する情報は、システム上保持・公開されません。</p>
+                  <h4 className="font-bold mt-4 mb-2 text-slate-800">2. 個人情報の利用目的</h4>
+                  <p>取得した情報は、投稿者の同一性確認（「本人のみが編集・削除できる」機能の提供）およびスパム行為の防止のためにのみ利用します。</p>
+                  <h4 className="font-bold mt-4 mb-2 text-slate-800">3. 第三者提供と免責事項</h4>
+                  <p>本サービス内に入力・公開されたテキストやURLは誰でも閲覧可能なパブリックデータとして扱われます。これら公開された情報によって生じたトラブルや損害について、運営者は一切の責任を負いません。ご自身の責任において投稿を行ってください。</p>
+                </>
+              ) : (
+                <>
+                  <p>「これ俺の！」をご利用いただきありがとうございます。</p>
+                  <p className="mt-4">本サービスは個人開発のプロジェクトです。ご意見、ご要望、不具合の報告、または公開された「起源」に対する重大な異議申し立て等は、以下の窓口までご連絡ください。</p>
+                  
+                  <div className="bg-slate-50 p-6 rounded-xl mt-6 border border-slate-200">
+                    <h4 className="font-bold text-slate-800 mb-2">お問い合わせ窓口</h4>
+                    <p className="text-sm text-slate-600 mb-4">運営メールアドレス宛にご連絡をお願いいたします。状況により返信にお時間をいただく場合がございます。</p>
+                    <a href="mailto:support@example.com" className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-indigo-700 transition-colors">
+                      <MessageSquare className="w-4 h-4" /> メールを送る
+                    </a>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            <div className="mt-8 text-center">
+              <button onClick={() => setInfoModal({ isOpen: false, type: null })} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-8 py-3 rounded-xl transition-colors">
+                閉じる
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -683,6 +698,16 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <footer className="max-w-6xl mx-auto px-4 py-8 border-t border-slate-200 mt-12">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
+          <p>© {new Date().getFullYear()} これ俺の！(Origin Protocol)</p>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setInfoModal({ isOpen: true, type: 'privacy' })} className="hover:text-indigo-600 transition-colors">プライバシーポリシー</button>
+            <button onClick={() => setInfoModal({ isOpen: true, type: 'support' })} className="hover:text-indigo-600 transition-colors">サポート・運営</button>
+          </div>
+        </div>
+      </footer>
 
       <style dangerouslySetInnerHTML={{__html: `
         .hide-scrollbar::-webkit-scrollbar { display: none; }
