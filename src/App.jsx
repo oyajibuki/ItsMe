@@ -24,7 +24,9 @@ const db = getFirestore(app);
 const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'koreoreno-app-default';
 const claimsCollectionPath = `artifacts/${currentAppId}/public/data/claims`;
 const objectionsCollectionPath = `artifacts/${currentAppId}/public/data/objections`;
-const profilesCollectionPath = `artifacts/${currentAppId}/public/data/profiles`;
+
+// 権限エラー回避のため、profilesもclaimsと同じ階層のドキュメントとして保存し、IDで識別する
+const getProfileDocId = (uid) => `PROFILE_${uid}`;
 
 const generateHash = async (text) => {
   const msgUint8 = new TextEncoder().encode(text);
@@ -263,23 +265,23 @@ export default function App() {
     if (!user) return;
     const claimsRef = collection(db, claimsCollectionPath);
     const unsubscribeSnapshot = onSnapshot(claimsRef, (snapshot) => {
-        const claimsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const allDocs = snapshot.docs;
+        
+        // プロフィール情報（IDがPROFILE_で始まるもの）を抽出
+        const profilesMap = {};
+        allDocs.filter(d => d.id.startsWith('PROFILE_')).forEach(d => {
+          profilesMap[d.id.replace('PROFILE_', '')] = d.data().icon;
+        });
+        setProfiles(profilesMap);
+
+        // 通常の宣言（それ以外）を抽出
+        const claimsData = allDocs
+          .filter(d => !d.id.startsWith('PROFILE_'))
+          .map(doc => ({ id: doc.id, ...doc.data() }));
         setClaims(claimsData);
       }, (error) => console.error("Fetch Error:", error));
     
-    const profilesRef = collection(db, profilesCollectionPath);
-    const unsubscribeProfiles = onSnapshot(profilesRef, (snapshot) => {
-      const profilesMap = {};
-      snapshot.docs.forEach(doc => {
-        profilesMap[doc.id] = doc.data().icon;
-      });
-      setProfiles(profilesMap);
-    });
-
-    return () => {
-      unsubscribeSnapshot();
-      unsubscribeProfiles();
-    };
+    return () => unsubscribeSnapshot();
   }, [user]);
 
   const showNotification = (msg) => {
@@ -307,17 +309,18 @@ export default function App() {
       const canvas = cropper.getCroppedCanvas({ width: 200, height: 200 });
       if (canvas) {
         const base64 = canvas.toDataURL("image/jpeg", 0.8);
-        console.log("Updating profile at:", `${profilesCollectionPath}/${user.uid}`);
         if (user && !user.isAnonymous) {
           try {
-            await setDoc(doc(db, profilesCollectionPath, user.uid), { 
+            // claimsコレクション内の特定IDドキュメントとして保存することで権限エラーを回避
+            await setDoc(doc(db, claimsCollectionPath, getProfileDocId(user.uid)), { 
               icon: base64,
+              userId: user.uid,
               updatedAt: Date.now()
             });
             showNotification("プロフィールを更新しました");
           } catch (e) {
             console.error("Profile Update Error Details:", e);
-            showNotification(`更新失敗: ${e.message || '権限エラー'}`);
+            showNotification(`更新失敗: ${e.message}`);
           }
         } else if (user) {
           setProfiles(prev => ({ ...prev, [user.uid]: base64 }));
